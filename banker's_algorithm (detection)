@@ -1,0 +1,99 @@
+#include <stdio.h>
+#include <stdbool.h>
+
+#define MAX_P 20
+#define MAX_R 20
+
+int P, R; // Number of processes and resources
+
+void input(int alloc[MAX_P][MAX_R], int max[MAX_P][MAX_R], int avail[MAX_R]) {
+    printf("Enter number of processes: ");
+    scanf("%d", &P);
+    printf("Enter number of resources: ");
+    scanf("%d", &R);
+
+    printf("Enter allocation matrix (%d x %d):\n", P, R);
+    for (int i = 0; i < P; i++) {
+        printf("Process %d: ", i);
+        for (int j = 0; j < R; j++) {
+            scanf("%d", &alloc[i][j]);
+        }
+    }
+
+    printf("Enter maximum matrix (%d x %d):\n", P, R);
+    for (int i = 0; i < P; i++) {
+        printf("Process %d: ", i);
+        for (int j = 0; j < R; j++) {
+            scanf("%d", &max[i][j]);
+        }
+    }
+
+    printf("Enter available resources (%d):\n", R);
+    for (int i = 0; i < R; i++) {
+        scanf("%d", &avail[i]);
+    }
+}
+
+void calculateNeed(int need[MAX_P][MAX_R], int max[MAX_P][MAX_R], int alloc[MAX_P][MAX_R]) {
+    for (int i = 0; i < P; i++) {
+        for (int j = 0; j < R; j++) {
+            need[i][j] = max[i][j] - alloc[i][j];
+        }
+    }
+}
+
+bool isSafe(int alloc[MAX_P][MAX_R], int max[MAX_P][MAX_R], int avail[MAX_R]) {
+    int need[MAX_P][MAX_R];
+    calculateNeed(need, max, alloc);
+
+    bool finish[MAX_P] = {false};
+    int safeSeq[MAX_P];
+    int work[MAX_R];
+
+    for (int i = 0; i < R; i++)
+        work[i] = avail[i];
+
+    int count = 0;
+
+    while (count < P) {
+        bool found = false;
+        for (int p = 0; p < P; p++) {
+            if (!finish[p]) {
+                int j;
+                for (j = 0; j < R; j++) {
+                    if (need[p][j] > work[j])
+                        break;
+                }
+
+                if (j == R) {
+                    for (int k = 0; k < R; k++)
+                        work[k] += alloc[p][k];
+                    safeSeq[count++] = p;
+                    finish[p] = true;
+                    found = true;
+                }
+            }
+        }
+
+        if (!found) {
+            printf("System is not in a safe state.\nDeadlock detected.\n");
+            return false;
+        }
+    }
+
+    printf("System is in a safe state.\nSafe sequence is: ");
+    for (int i = 0; i < P; i++)
+        printf("P%d ", safeSeq[i]);
+    printf("\n");
+
+    return true;
+}
+
+int main() {
+    int alloc[MAX_P][MAX_R], max[MAX_P][MAX_R], avail[MAX_R];
+
+    input(alloc, max, avail);
+    isSafe(alloc, max, avail);
+
+    return 0;
+}
