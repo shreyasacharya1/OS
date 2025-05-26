@@ -1,0 +1,141 @@
+#include <stdio.h>
+#include <stdbool.h>
+
+#define MAX_P 20
+#define MAX_R 20
+
+int P, R;  // Number of processes and resources
+
+void inputMatrices(int alloc[MAX_P][MAX_R], int max[MAX_P][MAX_R], int avail[MAX_R]) {
+    printf("Enter number of processes: ");
+    scanf("%d", &P);
+    printf("Enter number of resources: ");
+    scanf("%d", &R);
+
+    printf("Enter Allocation matrix (%d x %d):\n", P, R);
+    for (int i = 0; i < P; i++) {
+        printf("Process %d: ", i);
+        for (int j = 0; j < R; j++) {
+            scanf("%d", &alloc[i][j]);
+        }
+    }
+
+    printf("Enter Max matrix (%d x %d):\n", P, R);
+    for (int i = 0; i < P; i++) {
+        printf("Process %d: ", i);
+        for (int j = 0; j < R; j++) {
+            scanf("%d", &max[i][j]);
+        }
+    }
+
+    printf("Enter Available resources (%d): ", R);
+    for (int i = 0; i < R; i++) {
+        scanf("%d", &avail[i]);
+    }
+}
+
+void calculateNeed(int need[MAX_P][MAX_R], int max[MAX_P][MAX_R], int alloc[MAX_P][MAX_R]) {
+    for (int i = 0; i < P; i++) {
+        for (int j = 0; j < R; j++) {
+            need[i][j] = max[i][j] - alloc[i][j];
+        }
+    }
+}
+
+bool isSafe(int alloc[MAX_P][MAX_R], int need[MAX_P][MAX_R], int avail[MAX_R], int safeSeq[MAX_P]) {
+    bool finish[MAX_P] = {false};
+    int work[MAX_R];
+    for (int i = 0; i < R; i++)
+        work[i] = avail[i];
+
+    int count = 0;
+
+    while (count < P) {
+        bool found = false;
+        for (int p = 0; p < P; p++) {
+            if (!finish[p]) {
+                int j;
+                for (j = 0; j < R; j++) {
+                    if (need[p][j] > work[j])
+                        break;
+                }
+
+                if (j == R) {
+                    for (int k = 0; k < R; k++)
+                        work[k] += alloc[p][k];
+                    safeSeq[count++] = p;
+                    finish[p] = true;
+                    found = true;
+                }
+            }
+        }
+
+        if (!found)
+            return false;
+    }
+
+    return true;
+}
+
+bool requestResources(int pid, int request[MAX_R], int alloc[MAX_P][MAX_R],
+                      int need[MAX_P][MAX_R], int avail[MAX_R]) {
+    for (int i = 0; i < R; i++) {
+        if (request[i] > need[pid][i]) {
+            printf("Error: Process has exceeded its maximum claim.\n");
+            return false;
+        }
+        if (request[i] > avail[i]) {
+            printf("Resources not available. Process must wait.\n");
+            return false;
+        }
+    }
+
+    // Tentatively allocate
+    for (int i = 0; i < R; i++) {
+        avail[i] -= request[i];
+        alloc[pid][i] += request[i];
+        need[pid][i] -= request[i];
+    }
+
+    int safeSeq[MAX_P];
+    if (isSafe(alloc, need, avail, safeSeq)) {
+        printf("Request can be granted. System remains in a safe state.\n");
+        printf("Safe sequence: ");
+        for (int i = 0; i < P; i++) printf("P%d ", safeSeq[i]);
+        printf("\n");
+        return true;
+    } else {
+        // Rollback
+        for (int i = 0; i < R; i++) {
+            avail[i] += request[i];
+            alloc[pid][i] -= request[i];
+            need[pid][i] += request[i];
+        }
+        printf("Request cannot be granted. System would enter an unsafe state.\n");
+        return false;
+    }
+}
+
+int main() {
+    int alloc[MAX_P][MAX_R], max[MAX_P][MAX_R], need[MAX_P][MAX_R], avail[MAX_R];
+    inputMatrices(alloc, max, avail);
+    calculateNeed(need, max, alloc);
+
+    char choice;
+    do {
+        int pid, request[MAX_R];
+        printf("\nEnter process ID making the request (0 to %d): ", P - 1);
+        scanf("%d", &pid);
+
+        printf("Enter request vector (%d): ", R);
+        for (int i = 0; i < R; i++)
+            scanf("%d", &request[i]);
+
+        requestResources(pid, request, alloc, need, avail);
+
+        printf("\nDo you want to make another request? (y/n): ");
+        scanf(" %c", &choice);
+    } while (choice == 'y' || choice == 'Y');
+
+    return 0;
+}
